@@ -658,8 +658,21 @@ class SwipeManager {
         }
         if state == .began {
             let (disX, disY) = swipeDistance(touches: touches)
-            accDisX += disX
-            accDisY += disY
+            // Once the axis is locked the guard above stops running, so nothing
+            // re-checks the live finger count for the rest of the gesture:
+            // `activeFingerCount` stays latched at the count the gesture started
+            // with, and a single remaining finger keeps driving workspace
+            // switches until every finger leaves the trackpad. Ignore movement
+            // recorded while short-handed. `swipeDistance` is still called above
+            // so `prevTouchPositions` stays current — a re-landed finger then
+            // contributes 0 on its first frame instead of a jump. Freezing
+            // rather than cancelling keeps the brief-lift tolerance intact and
+            // lets the non-multiSwipe path still fire on the distance travelled
+            // with a full hand when fingers lift unevenly at the end of a swipe.
+            if count >= activeFingerCount {
+                accDisX += disX
+                accDisY += disY
+            }
 
             // Lock axis once we have enough movement
             if swipeAxis == .undecided {
