@@ -149,6 +149,15 @@ class SwipeManager {
     private func runCommand(args: [String], stdin: String, retry: Bool = false)
         -> Result<String, SwipeError>
     {
+        // The reconnect in the catch block below only covers errors on an
+        // already-open socket. If the initial connect in `start()` failed —
+        // e.g. SwipeAeroSpace launched before AeroSpace at login, so nothing
+        // was listening on the socket yet — `socket` stays nil for the life of
+        // the process and every gesture silently no-ops until a manual
+        // restart. Retry the connect here so the app heals on the next swipe.
+        if socket == nil && !retry {
+            connectSocket()
+        }
         guard let socket = socket else {
             return .failure(.SocketError("No socket created"))
         }
